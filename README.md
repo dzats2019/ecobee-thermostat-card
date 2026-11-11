@@ -2,6 +2,12 @@
 
 A standalone Home Assistant Lovelace thermostat dashboard card inspired by the visual layout in a Lennox touchscreen reference image, with **ecobee** text branding. This project is not affiliated with, sponsored by, or endorsed by Ecobee.
 
+## Version 1.0.4 changes
+
+- Remove the redundant upper-right "system / Off" reading whenever the thermostat is off.
+- Preserve the center "system off" indication and the outdoor temperature on the right.
+- Keep Heat/Off controls, humidity, weather icon, gauge styling, and temperature behavior unchanged.
+
 ## Version 1.0.3 changes
 
 - Replace the unused Status/occupancy area with an outside weather icon and condition label driven by a configurable Home Assistant `weather.*` entity (or condition sensor).

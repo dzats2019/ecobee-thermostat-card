@@ -1,4 +1,4 @@
-/* Ecobee-style Thermostat Card v1.0.3
+/* Ecobee-style Thermostat Card v1.0.4
  * Standalone Home Assistant Lovelace custom card. No third-party dependencies.
  * Ecobee is a trademark of its respective owner; this is an unofficial project.
  */
@@ -193,7 +193,7 @@
           <circle cx="219" cy="40" r="23" fill="${modeColor}" stroke="${ringColor}" stroke-width="5"/><circle cx="219" cy="40" r="11" fill="${ringColor}"/>`}
         </svg><div class="dial-content"><div class="humidity">${humidity===null?'Indoor humidity unavailable':`Humidity <span class="droplet">♦</span> ${round(humidity)}%`}</div><div class="current">${round(current)}<span class="degree">°</span></div><div class="mode">${esc(label)}</div></div></div>
         <div class="action-row"><button class="schedule" data-action="toggle" aria-expanded="${this._open}">modes / controls</button></div></div>
-        <div class="side right"><div class="small">${off?'system':this._config.heating_only?'heat-to':climate.state==='heat'?'heat-to':climate.state==='heat_cool'?'range':'cool-to'}</div><div class="big ${off?'muted':''}">${off?'Off':`${esc(target.label)}°`}</div><div class="small">outside</div><div class="big outside-value">${round(outside)}°</div></div></div>
+        <div class="side right">${off?'':`<div class="small">${this._config.heating_only?'heat-to':climate.state==='heat'?'heat-to':climate.state==='heat_cool'?'range':'cool-to'}</div><div class="big">${esc(target.label)}°</div>`}<div class="small">outside</div><div class="big outside-value">${round(outside)}°</div></div></div>
         ${this._open?`<div class="panel">${targetControls}<div class="mode-buttons">${options}</div><div class="info">Changes are sent to Home Assistant. Ecobee schedules or holds may override or modify them.</div>${this._message?`<div class="error" role="alert">${esc(this._message)}</div>`:''}</div>`:''}
         <div class="brand">ecobee</div></div></ha-card>`;
     }
