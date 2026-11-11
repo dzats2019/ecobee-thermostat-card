@@ -1,4 +1,4 @@
-/* Ecobee-style Thermostat Card v1.0.1
+/* Ecobee-style Thermostat Card v1.0.2
  * Standalone Home Assistant Lovelace custom card. No third-party dependencies.
  * Ecobee is a trademark of its respective owner; this is an unofficial project.
  */
@@ -33,9 +33,9 @@
     .side .big.muted { color:#93afbf !important; }
     .dial-content { position:absolute; inset:0; pointer-events:none; text-align:center; }
     /* Keep each label in its own non-overlapping band inside the circular arc. */
-    .humidity { position:absolute; top:25%; left:0; width:100%; line-height:1.2; }
-    .current { position:absolute; top:37%; left:0; width:100%; line-height:1; }
-    .mode { position:absolute; bottom:9%; left:0; width:100%; line-height:1.2; }
+    .humidity { position:absolute; top:23%; left:0; width:100%; line-height:1.2; }
+    .current { position:absolute; top:36%; left:0; width:100%; line-height:1; }
+    .mode { position:absolute; bottom:14%; left:0; width:100%; line-height:1.2; }
     .humidity { font-size:clamp(12px,1.8vw,16px); white-space:nowrap; }
     .droplet { color:#32cafa; font-size:17px; margin:0 5px; }
     .current { font-size:clamp(67px,11vw,105px); font-weight:300; letter-spacing:-5px; color:#b8ecff; font-variant-numeric:tabular-nums; }
@@ -68,10 +68,12 @@
   `;
   const escapes = {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'};
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => escapes[c]);
-  const numeric = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const numeric = v => { if (v === null || v === undefined || (typeof v === 'string' && !v.trim())) return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
   const round = (v, digits=0) => v == null ? '—' : Number(v).toFixed(digits);
   const TEMP_MODES = ['heat','cool','heat_cool'];
-  const ICONS = {heat:'☀',cool:'❄',heat_cool:'◉',off:'⏻',dry:'◌',fan_only:'≋',auto:'◉'};
+  // Text labels avoid unsupported Unicode glyphs (empty squares on wall panels).
+  const MODE_LABELS = {heat:'Heat',cool:'Cool',heat_cool:'Heat / Cool',off:'Off',dry:'Dry',fan_only:'Fan',auto:'Auto'};
+  const MODE_STATUS = {heat:'heat only',cool:'cool only',heat_cool:'heat / cool',off:'system off',dry:'dry',fan_only:'fan only',auto:'auto'};
   class EcobeeThermostatCard extends HTMLElement {
     constructor() { super(); this.attachShadow({mode:'open'}); this._open=false; this._busy=false; this._message=''; this._ticker=null; this._boundClick = this._onClick.bind(this); this.shadowRoot.addEventListener('click',this._boundClick); }
     setConfig(config) {
@@ -127,7 +129,7 @@
       const off=climate.state==='off';
       const modeColor=(action==='heating'||climate.state==='heat') ? '#ffab45' : (climate.state==='off' ? '#8294a5':'#0c78ff');
       const ringColor=(action==='heating'||climate.state==='heat') ? '#ffcf79' : (climate.state==='off' ? '#8799ae':'#78e8ff');
-      const label=off?'system off':action==='cooling'?'cooling':action==='heating'?'heating':({heat:'heat only',cool:'cool only',heat_cool:'auto'}[climate.state]||climate.state);
+      const label=off?'system off':action==='cooling'?'cooling':action==='heating'?'heating':(MODE_STATUS[climate.state]||climate.state);
       const target=this._targetInfo(climate);
       const {min,max,step}=this._levels(climate);
       // Restrict the *UI and commands* for heating-only zones, independently
@@ -138,8 +140,8 @@
       const clock=time.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
       const date=time.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
       const availability=unavailable?'unavailable':'';
-      const options=modes.map(mode=>`<button class="chip ${climate.state===mode?'selected':''}" data-action="mode" data-value="${esc(mode)}" ${unavailable||this._busy?'disabled':''}>${esc(ICONS[mode]||'')} ${esc(mode.replace('_',' / '))}</button>`).join('');
-      const targetControls=this._isRange(climate) ? `
+      const options=modes.map(mode=>`<button class="chip ${climate.state===mode?'selected':''}" data-action="mode" data-value="${esc(mode)}" ${unavailable||this._busy?'disabled':''}>${esc(MODE_LABELS[mode]||mode)}</button>`).join('');
+      const targetControls=off ? `<div class="panel-title">Heating is off</div><div class="info">Select Heat to enable setpoint adjustments.</div>` : this._isRange(climate) ? `
         <div class="panel-title">Auto mode temperature range (${esc(this._tempUnit())})</div>
         <div class="controls"><button class="control-btn" data-action="lower-low" ${unavailable||this._busy?'disabled':''} aria-label="Decrease heat target">−</button><div class="target">Heat ${round(numeric(a.target_temp_low))}</div><button class="control-btn" data-action="raise-low" ${unavailable||this._busy?'disabled':''} aria-label="Increase heat target">+</button></div>
         <div class="controls" style="margin-top:8px"><button class="control-btn" data-action="lower-high" ${unavailable||this._busy?'disabled':''} aria-label="Decrease cool target">−</button><div class="target">Cool ${round(numeric(a.target_temp_high))}</div><button class="control-btn" data-action="raise-high" ${unavailable||this._busy?'disabled':''} aria-label="Increase cool target">+</button></div>` : `
@@ -153,9 +155,9 @@
           <path d="M 54 244 A 125 125 0 1 1 246 244" fill="none" stroke="#23455d" stroke-width="24" stroke-linecap="round"/>
           ${off?'':`<path d="M 54 244 A 125 125 0 1 1 246 244" fill="none" stroke="url(#arc)" stroke-width="24" stroke-linecap="round"/>
           <circle cx="219" cy="40" r="23" fill="${modeColor}" stroke="${ringColor}" stroke-width="5"/><circle cx="219" cy="40" r="11" fill="${ringColor}"/>`}
-        </svg><div class="dial-content"><div class="humidity">${humidity===null?'Indoor humidity unavailable':`Humidity <span class="droplet">♦</span> ${round(humidity)}%`}</div><div class="current">${round(current)}<span class="degree">°</span></div><div class="mode"><span class="mode-icon" style="color:${modeColor}">${esc(ICONS[climate.state]||'◉')}</span>${esc(label)}</div></div></div>
+        </svg><div class="dial-content"><div class="humidity">${humidity===null?'Indoor humidity unavailable':`Humidity <span class="droplet">♦</span> ${round(humidity)}%`}</div><div class="current">${round(current)}<span class="degree">°</span></div><div class="mode">${esc(label)}</div></div></div>
         <div class="action-row"><button class="schedule" data-action="toggle" aria-expanded="${this._open}">modes / controls</button></div></div>
-        <div class="side right"><div class="small">${off?'last setpoint':this._config.heating_only?'heat-to':climate.state==='heat'?'heat-to':climate.state==='heat_cool'?'range':'cool-to'}</div><div class="big ${off?'muted':''}">${esc(target.label)}°</div><div class="small">outside</div><div class="big outside-value">${round(outside)}°</div></div></div>
+        <div class="side right"><div class="small">${off?'system':this._config.heating_only?'heat-to':climate.state==='heat'?'heat-to':climate.state==='heat_cool'?'range':'cool-to'}</div><div class="big ${off?'muted':''}">${off?'Off':`${esc(target.label)}°`}</div><div class="small">outside</div><div class="big outside-value">${round(outside)}°</div></div></div>
         ${this._open?`<div class="panel">${targetControls}<div class="mode-buttons">${options}</div><div class="info">Changes are sent to Home Assistant. Ecobee schedules or holds may override or modify them.</div>${this._message?`<div class="error" role="alert">${esc(this._message)}</div>`:''}</div>`:''}
         <div class="brand">ecobee</div></div></ha-card>`;
     }

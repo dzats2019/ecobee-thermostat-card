@@ -2,9 +2,12 @@
 
 A standalone Home Assistant Lovelace thermostat dashboard card inspired by the visual layout in a Lennox touchscreen reference image, with **ecobee** text branding. This project is not affiliated with, sponsored by, or endorsed by Ecobee.
 
-## Version 1.0.1 changes
+## Version 1.0.2 changes
 
 - Reposition humidity, main temperature, and HVAC label into separate bands inside the temperature dial to prevent overlap.
+- Fix missing/invalid temperature values displaying as 0°F; the card now shows an em dash for invalid values.
+- Use text-only HVAC labels to prevent missing-font square symbols on Kindle displays.
+- When HVAC is Off, suppress the misleading 0°F target controls and show an appropriate disabled status.
 - Improve wide-card alignment and responsive display.
 - Add `heating_only: true` for the garage card: only Heat and Off modes appear and only those HVAC mode commands may be sent through this card. It does not change the modes reported by the thermostat or block commands sent elsewhere.
 - Preserve original setpoint controls, outside temperature sensor, and HACS manifest.
@@ -98,7 +101,7 @@ Remove the card from the dashboard and delete the resource registration. The scr
 
 MIT. See LICENSE.
 
-## Version 1.0.1 changes
+## Version 1.0.2 changes
 
 - Improved humidity, current-temperature, and operating-mode spacing within the dial.
 - Added `heating_only: true` for Garage configurations. The card then only exposes Heat and Off, and rejects other mode button commands.
@@ -107,3 +110,7 @@ MIT. See LICENSE.
 - Controls remain accessible through the modes/controls button; temperature adjustment is disabled while Off is selected.
 
 After publishing a GitHub release, download the new version in HACS and refresh the browser to clear cached JavaScript.
+
+### Garage heating-only configuration reminder
+
+Add `heating_only: true` to the actual dashboard card YAML (not just the repository example). Without that option the card will show every HVAC mode advertised by the entity, including cooling options even if you never use them.
