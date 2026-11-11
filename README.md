@@ -85,7 +85,8 @@ weather_entity: weather.REPLACE_WITH_YOUR_NWS_WEATHER_ENTITY
 | `weather_entity` | No | Home Assistant `weather.*` or weather condition sensor for icon and condition label |
 | `min_temp`, `max_temp` | No | Override climate entity minimum and maximum permitted target |
 | `step` | No | Override the thermostat's setpoint increment |
-| `heating_only` | No | Show and permit only `heat` and `off` buttons in this card (recommended for Garage) |
+| `heating_only` | No | Show and permit only `heat` and `off` buttons in this card (recommended for Garage); takes precedence over `allowed_hvac_modes` |
+| `allowed_hvac_modes` | No | Limit mode buttons and commands to the listed modes, intersected with the thermostat-supported `hvac_modes` (e.g. `[off, heat, cool]`) |
 
 ## Behavior and safeguards
 
@@ -138,3 +139,29 @@ Add `heating_only: true` to the actual dashboard card YAML (not just the reposit
 
 ### v1.0.3 layout refinement
 - Lowered the indoor humidity line slightly (23% to 26% of the dial height) for improved spacing beneath the upper arc.
+
+## Version 1.0.5 changes
+
+- Added `allowed_hvac_modes` to restrict mode buttons and service calls per card, without changing the thermostat's native capabilities.
+- Living Room example offers only Off, Heat, and Cool. `heat_cool`/Auto is hidden from the custom card.
+- Preserved Garage `heating_only: true` behavior, including command restrictions, and all v1.0.4 UI behavior.
+- Invalid `allowed_hvac_modes` types are rejected with a configuration error.
+
+### Living Room example
+
+```yaml
+type: custom:ecobee-thermostat-card
+entity: climate.living_room # Replace with your actual Living Room climate entity ID
+name: Living Room
+outside_entity: sensor.kpne_temperature
+weather_entity: weather.kpne
+allowed_hvac_modes:
+  - "off"
+  - "heat"
+  - "cool"
+grid_options:
+  columns: full
+  rows: auto
+```
+
+Note: The permitted modes control only what this dashboard card offers. Existing Ecobee automations, schedules, and other HA controls are unaffected.

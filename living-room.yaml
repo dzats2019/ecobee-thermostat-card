@@ -2,4 +2,11 @@ type: custom:ecobee-thermostat-card
 entity: climate.living_room
 name: LIVING ROOM
 outside_entity: sensor.kpne_temperature
-weather_entity: weather.REPLACE_WITH_YOUR_NWS_WEATHER_ENTITY
+weather_entity: weather.kpne
+allowed_hvac_modes:
+  - "off"
+  - "heat"
+  - "cool"
+grid_options:
+  columns: full
+  rows: auto

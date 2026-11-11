@@ -1,4 +1,4 @@
-/* Ecobee-style Thermostat Card v1.0.4
+/* Ecobee-style Thermostat Card v1.0.5
  * Standalone Home Assistant Lovelace custom card. No third-party dependencies.
  * Ecobee is a trademark of its respective owner; this is an unofficial project.
  */
@@ -80,6 +80,12 @@
     constructor() { super(); this.attachShadow({mode:'open'}); this._open=false; this._busy=false; this._message=''; this._ticker=null; this._boundClick = this._onClick.bind(this); this.shadowRoot.addEventListener('click',this._boundClick); }
     setConfig(config) {
       if (!config || typeof config.entity !== 'string' || !config.entity.startsWith('climate.')) throw new Error('Set entity to a climate entity (climate.xxx).');
+      if (config.allowed_hvac_modes !== undefined &&
+          (!Array.isArray(config.allowed_hvac_modes) ||
+           !config.allowed_hvac_modes.length ||
+           config.allowed_hvac_modes.some(mode => typeof mode !== 'string'))) {
+        throw new Error('allowed_hvac_modes must be a non-empty list of mode strings.');
+      }
       this._config = {...config, name:config.name || 'ECOBEE', min_temp:config.min_temp, max_temp:config.max_temp, step:config.step};
       this._render();
     }
@@ -144,6 +150,13 @@
       const step=numeric(this._config.step) ?? numeric(attrs.target_temp_step) ?? 1;
       return {min,max,step:step>0?step:1};
     }
+    _allowedModes(climate) {
+      const exposed = Array.isArray(climate.attributes?.hvac_modes)
+        ? climate.attributes.hvac_modes.filter(mode => typeof mode === 'string') : [];
+      // Never offer unsupported thermostat modes. Heating-only always restricts to Heat/Off.
+      const permitted = this._config.heating_only ? ['heat', 'off'] : this._config.allowed_hvac_modes;
+      return permitted ? exposed.filter(mode => permitted.includes(mode)) : exposed;
+    }
     _isRange(climate) { return climate.state==='heat_cool' && numeric(climate.attributes.target_temp_low)!==null && numeric(climate.attributes.target_temp_high)!==null; }
     _targetInfo(climate) {
       const a=climate.attributes;
@@ -168,10 +181,7 @@
       const label=off?'system off':action==='cooling'?'cooling':action==='heating'?'heating':(MODE_STATUS[climate.state]||climate.state);
       const target=this._targetInfo(climate);
       const {min,max,step}=this._levels(climate);
-      // Restrict the *UI and commands* for heating-only zones, independently
-      // of any cooling modes a thermostat happens to advertise.
-      const exposedModes=(a.hvac_modes || []).filter(x=>typeof x==='string');
-      const modes=this._config.heating_only ? exposedModes.filter(x=>x==='heat'||x==='off') : exposedModes;
+      const modes=this._allowedModes(climate);
       const time=new Date();
       const clock=time.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
       const date=time.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
@@ -208,8 +218,7 @@
       let service, data;
       if(act==='mode') {
         const mode=btn.dataset.value;
-        if(!(climate.attributes.hvac_modes || []).includes(mode)) return;
-        if(this._config.heating_only && !['heat','off'].includes(mode)) return;
+        if(!this._allowedModes(climate).includes(mode)) return;
         service='set_hvac_mode';data={entity_id:this._config.entity,hvac_mode:mode};
       } else {
         service='set_temperature';data={entity_id:this._config.entity};
