@@ -2,6 +2,13 @@
 
 A standalone Home Assistant Lovelace thermostat dashboard card inspired by the visual layout in a Lennox touchscreen reference image, with **ecobee** text branding. This project is not affiliated with, sponsored by, or endorsed by Ecobee.
 
+## Version 1.0.1 changes
+
+- Reposition humidity, main temperature, and HVAC label into separate bands inside the temperature dial to prevent overlap.
+- Improve wide-card alignment and responsive display.
+- Add `heating_only: true` for the garage card: only Heat and Off modes appear and only those HVAC mode commands may be sent through this card. It does not change the modes reported by the thermostat or block commands sent elsewhere.
+- Preserve original setpoint controls, outside temperature sensor, and HACS manifest.
+
 ## Features
 
 - Dark blue thermostat interface with circular dial, date/time, humidity, HVAC mode/action, target temperature, outdoor temperature and configurable occupancy status.
@@ -25,7 +32,7 @@ Do not register both `/local/ecobee-thermostat-card.js` and `/hacsfiles/ecobee-t
 
 ## Manual installation (optional)
 
-Copy `ecobee-thermostat-card.js` to `/config/www/ecobee-thermostat-card.js`, then register `/local/ecobee-thermostat-card.js?v=1.0.0` as a **JavaScript module** under **Settings → Dashboards → ⋮ → Resources**. Hard-refresh before adding the custom card.
+Copy `ecobee-thermostat-card.js` to `/config/www/ecobee-thermostat-card.js`, then register `/local/ecobee-thermostat-card.js?v=1.0.1` as a **JavaScript module** under **Settings → Dashboards → ⋮ → Resources**. Hard-refresh before adding the custom card.
 
 ## Example: Living room
 
@@ -42,9 +49,10 @@ presence_entity: person.dmitriy
 
 ```yaml
 type: custom:ecobee-thermostat-card
-entity: climate.garage
-name: GARAGE
+entity: climate.garage_thermostat_2
+name: Garage
 outside_entity: sensor.kpne_temperature
+heating_only: true
 ```
 
 **Note:** Above climate and weather entities are illustrative. Confirm exact IDs in Home Assistant under Developer Tools → States. Without `outside_entity`, the outdoor value displays `—`. Without `presence_entity`, the left status displays `status`. Indoor humidity defaults to the climate entity's `current_humidity` attribute; `humidity_entity` overrides it.
@@ -60,6 +68,7 @@ outside_entity: sensor.kpne_temperature
 | `presence_entity` | No | `person.*`, `device_tracker.*`, or binary sensor; shows home/away |
 | `min_temp`, `max_temp` | No | Override climate entity minimum and maximum permitted target |
 | `step` | No | Override the thermostat's setpoint increment |
+| `heating_only` | No | Show and permit only `heat` and `off` buttons in this card (recommended for Garage) |
 
 ## Behavior and safeguards
 
@@ -88,3 +97,13 @@ Remove the card from the dashboard and delete the resource registration. The scr
 ## License
 
 MIT. See LICENSE.
+
+## Version 1.0.1 changes
+
+- Improved humidity, current-temperature, and operating-mode spacing within the dial.
+- Added `heating_only: true` for Garage configurations. The card then only exposes Heat and Off, and rejects other mode button commands.
+- In Off mode the ring is a muted outline, with no active setpoint marker. The last thermostat setpoint is labeled *last setpoint* rather than *heat-to* to avoid indicating active heating.
+- Outdoor temperature remains available when HVAC is off.
+- Controls remain accessible through the modes/controls button; temperature adjustment is disabled while Off is selected.
+
+After publishing a GitHub release, download the new version in HACS and refresh the browser to clear cached JavaScript.
