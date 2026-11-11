@@ -1,0 +1,4 @@
+type: custom:ecobee-thermostat-card
+entity: climate.garage
+name: GARAGE
+outside_entity: sensor.kpne_temperature

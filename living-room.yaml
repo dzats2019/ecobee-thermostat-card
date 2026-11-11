@@ -1,0 +1,5 @@
+type: custom:ecobee-thermostat-card
+entity: climate.living_room
+name: LIVING ROOM
+outside_entity: sensor.kpne_temperature
+presence_entity: person.dmitriy
