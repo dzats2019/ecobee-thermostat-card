@@ -1,4 +1,4 @@
-/* Ecobee-style Thermostat Card v1.0.2
+/* Ecobee-style Thermostat Card v1.0.3
  * Standalone Home Assistant Lovelace custom card. No third-party dependencies.
  * Ecobee is a trademark of its respective owner; this is an unofficial project.
  */
@@ -24,8 +24,10 @@
     .left { text-align:left; }.right { text-align:right; }
     .side .small { font-size:15px; font-style:italic; color:#b1d7ea; }.side .big { font-size:clamp(24px,4vw,37px); color:#55caff; line-height:1.15; font-weight:400; }
     .outside-value { color:#def5ff !important; }
-    .presence { border:0; padding:0; background:none; font-size:15px; text-align:left; }
-    .presence svg { display:block; width:39px; height:39px; margin-bottom:4px; }
+    .weather { display:flex; flex-direction:column; align-items:flex-start; gap:4px; max-width:100%; min-width:0; }
+    .weather svg { display:block; width:50px; height:50px; flex:none; }
+    .weather-label { font-size:clamp(12px,1.6vw,15px); line-height:1.2; overflow-wrap:anywhere; color:#c5eafa; }
+    .weather-unavailable { opacity:.6; }
     .center { display:flex; flex-direction:column; align-items:center; min-width:0; }
     .dial { width:min(100%,290px); position:relative; aspect-ratio:1.07; flex:none; }
     .dial svg { width:100%; height:100%; overflow:visible; }
@@ -33,7 +35,7 @@
     .side .big.muted { color:#93afbf !important; }
     .dial-content { position:absolute; inset:0; pointer-events:none; text-align:center; }
     /* Keep each label in its own non-overlapping band inside the circular arc. */
-    .humidity { position:absolute; top:23%; left:0; width:100%; line-height:1.2; }
+    .humidity { position:absolute; top:26%; left:0; width:100%; line-height:1.2; }
     .current { position:absolute; top:36%; left:0; width:100%; line-height:1; }
     .mode { position:absolute; bottom:14%; left:0; width:100%; line-height:1.2; }
     .humidity { font-size:clamp(12px,1.8vw,16px); white-space:nowrap; }
@@ -94,12 +96,46 @@
       if (state && !['unknown','unavailable'].includes(state.state)) return numeric(state.state);
       return null;
     }
-    _occupancy() {
-      const state=this._get(this._config?.presence_entity);
-      if(!state) return null;
-      if(['unknown','unavailable'].includes(state.state)) return null;
-      if(state.entity_id.startsWith('person.') || state.entity_id.startsWith('device_tracker.')) return state.state==='home';
-      return ['on','home','true'].includes(state.state.toLowerCase());
+    _weatherCondition() {
+      const entity=this._get(this._config?.weather_entity);
+      if(!entity || ['unknown','unavailable'].includes(entity.state)) return null;
+      const value=String(entity.state).toLowerCase().trim().replace(/[_\s]+/g,'-');
+      return value || null;
+    }
+    _weatherDisplay(condition) {
+      const labels={sunny:'Sunny','clear-night':'Clear night',partlycloudy:'Partly cloudy',cloudy:'Cloudy',rainy:'Rainy',pouring:'Heavy rain',snowy:'Snow', 'snowy-rainy':'Wintry mix',lightning:'Thunderstorms','lightning-rainy':'Thunderstorms',windy:'Windy','windy-variant':'Windy',fog:'Fog',hail:'Hail',exceptional:'Severe weather'};
+      if(!condition) return {label:'Weather unavailable',icon:'unknown'};
+      return {label:labels[condition] || condition.replace(/-/g,' '),icon:labels[condition]?condition:'unknown'};
+    }
+    _weatherIcon(kind) {
+      // Self-contained SVG: no remote image requests, emoji fonts or external icon dependencies.
+      const sun='<circle cx="28" cy="28" r="10" fill="#ffc34f"/><g stroke="#ffc34f" stroke-width="3" stroke-linecap="round"><path d="M28 4v7M28 45v7M4 28h7M45 28h7M11 11l5 5M40 40l5 5M45 11l-5 5M16 40l-5 5"/></g>';
+      const cloud='<path d="M15 42h29a10 10 0 0 0 1-20 15 15 0 0 0-28-3A12 12 0 0 0 15 42Z" fill="#c4e2f2" stroke="#82a9c3" stroke-width="2" stroke-linejoin="round"/>';
+      const rain='<g stroke="#5cc9ff" stroke-width="3.5" stroke-linecap="round"><path d="M19 45l-4 8M32 45l-4 8M45 45l-4 8"/></g>';
+      const snow='<g stroke="#b4ebff" stroke-width="2.5" stroke-linecap="round"><path d="M17 45v10m-5-5h10M36 45v10m-5-5h10"/></g>';
+      const bolt='<path d="M30 42l-8 12 11-2-4 10 17-20H30Z" fill="#ffd15b"/>';
+      const fog='<g stroke="#9fc4d9" stroke-width="3" stroke-linecap="round"><path d="M8 46h41M15 53h27"/></g>';
+      const wind='<g stroke="#aee5ff" stroke-width="3" fill="none" stroke-linecap="round"><path d="M7 25h32q10 0 10-8t-8-7M9 35h40q7 0 7 7t-8 7M14 45h18"/></g>';
+      const moon='<path d="M34 7a20 20 0 1 0 17 29A20 20 0 0 1 34 7Z" fill="#d6e9ff"/>';
+      let content;
+      switch(kind) {
+        case 'sunny': content=sun;break;
+        case 'clear-night': content=moon;break;
+        case 'partlycloudy': content='<g transform="translate(-6,-8) scale(.85)">'+sun+'</g>'+cloud;break;
+        case 'cloudy': content=cloud;break;
+        case 'rainy': content=cloud+rain;break;
+        case 'pouring': content=cloud+rain;break;
+        case 'snowy': content=cloud+snow;break;
+        case 'snowy-rainy': content=cloud+rain+snow;break;
+        case 'lightning': content=cloud+bolt;break;
+        case 'lightning-rainy': content=cloud+rain+bolt;break;
+        case 'windy':case 'windy-variant':content=wind;break;
+        case 'fog':content=cloud+fog;break;
+        case 'hail':content=cloud+snow;break;
+        case 'exceptional': content=cloud+bolt;break;
+        default: content='<circle cx="30" cy="30" r="24" fill="none" stroke="#90b4c8" stroke-width="3"/><path d="M23 23a8 8 0 1 1 13 7l-6 6v3" fill="none" stroke="#a8d3e8" stroke-width="3" stroke-linecap="round"/><circle cx="30" cy="46" r="2" fill="#a8d3e8"/>';
+      }
+      return `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">${content}</svg>`;
     }
     _levels(climate) {
       const attrs=climate.attributes || {};
@@ -124,7 +160,7 @@
       const humidityEntity=this._get(this._config.humidity_entity);
       const humidity=humidityEntity ? numeric(humidityEntity.state) : numeric(a.current_humidity);
       const outside=this._externalTemp();
-      const presence=this._occupancy();
+      const weather=this._weatherDisplay(this._weatherCondition());
       const action=a.hvac_action || climate.state;
       const off=climate.state==='off';
       const modeColor=(action==='heating'||climate.state==='heat') ? '#ffab45' : (climate.state==='off' ? '#8294a5':'#0c78ff');
@@ -149,7 +185,7 @@
         <div class="controls"><button class="control-btn" data-action="decrease" ${unavailable||this._busy||target.value==null||climate.state==='off'?'disabled':''} aria-label="Lower target temperature">−</button><div class="target">${esc(target.label)}${esc(this._tempUnit())}</div><button class="control-btn" data-action="increase" ${unavailable||this._busy||target.value==null||climate.state==='off'?'disabled':''} aria-label="Raise target temperature">+</button></div>`;
       this.shadowRoot.innerHTML = `<style>${STYLES}</style><ha-card><div class="shell ${availability}">
         <header class="top"><div><div class="clock">${esc(clock)}</div><div class="date">${esc(date)}</div></div><div class="room">${esc(this._config.name)}</div><button class="menu-button" data-action="toggle" aria-label="Open thermostat controls" aria-expanded="${this._open}">${'<span></span>'.repeat(9)}</button></header>
-        <div class="body"><div class="side left"><button class="presence" data-action="info" aria-label="Occupancy information"><svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21L22 5l17 16v18H5Z"/><circle cx="22" cy="23" r="5"/><path d="M13 37c0-6 4-9 9-9s9 3 9 9"/></svg>${presence===null?'status':presence?'home':'away'}</button></div>
+        <div class="body"><div class="side left"><div class="weather ${weather.icon==='unknown'?'weather-unavailable':''}" role="img" aria-label="Outside weather: ${esc(weather.label)}">${this._weatherIcon(weather.icon)}<span class="weather-label">${esc(weather.label)}</span></div></div>
         <div class="center"><div class="dial ${off?'off':''}"><svg viewBox="0 0 300 280" role="img" aria-label="Temperature dial">
           <defs><linearGradient id="arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${ringColor}"/><stop offset="1" stop-color="${modeColor}"/></linearGradient></defs>
           <path d="M 54 244 A 125 125 0 1 1 246 244" fill="none" stroke="#23455d" stroke-width="24" stroke-linecap="round"/>
@@ -166,7 +202,6 @@
       if(!btn || !this._hass || !this._config || this._busy) return;
       const act=btn.dataset.action;
       if(act==='toggle'){this._open=!this._open;this._message='';this._render();return;}
-      if(act==='info'){this._open=true;this._render();return;}
       const climate=this._get(this._config.entity);
       if(!climate || ['unknown','unavailable'].includes(climate.state)) return;
       const {min,max,step}=this._levels(climate);

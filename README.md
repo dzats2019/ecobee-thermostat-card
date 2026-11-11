@@ -2,6 +2,13 @@
 
 A standalone Home Assistant Lovelace thermostat dashboard card inspired by the visual layout in a Lennox touchscreen reference image, with **ecobee** text branding. This project is not affiliated with, sponsored by, or endorsed by Ecobee.
 
+## Version 1.0.3 changes
+
+- Replace the unused Status/occupancy area with an outside weather icon and condition label driven by a configurable Home Assistant `weather.*` entity (or condition sensor).
+- Render native SVG icons for sunny, partly cloudy, cloudy, rain, snow, thunderstorms, fog and windy conditions. No third-party icons or network requests.
+- Show Weather unavailable when the configured weather entity is absent or unavailable; no fabricated condition.
+- Preserve the KPNE outdoor temperature sensor, the existing temperature controls, and heating-only Garage mode restrictions.
+
 ## Version 1.0.2 changes
 
 - Reposition humidity, main temperature, and HVAC label into separate bands inside the temperature dial to prevent overlap.
@@ -14,7 +21,7 @@ A standalone Home Assistant Lovelace thermostat dashboard card inspired by the v
 
 ## Features
 
-- Dark blue thermostat interface with circular dial, date/time, humidity, HVAC mode/action, target temperature, outdoor temperature and configurable occupancy status.
+- Dark blue thermostat interface with circular dial, date/time, humidity, HVAC mode/action, target temperature, outdoor temperature and live outside weather conditions.
 - Expandable plus/minus temperature controls and supported HVAC mode buttons.
 - Supports single-setpoint thermostats and `heat_cool` thermostats exposing `target_temp_low` and `target_temp_high`.
 - Works with any Home Assistant `climate.*` entity that supports standard climate services; Ecobee-specific behavior is determined by the integration.
@@ -35,7 +42,7 @@ Do not register both `/local/ecobee-thermostat-card.js` and `/hacsfiles/ecobee-t
 
 ## Manual installation (optional)
 
-Copy `ecobee-thermostat-card.js` to `/config/www/ecobee-thermostat-card.js`, then register `/local/ecobee-thermostat-card.js?v=1.0.1` as a **JavaScript module** under **Settings → Dashboards → ⋮ → Resources**. Hard-refresh before adding the custom card.
+Copy `ecobee-thermostat-card.js` to `/config/www/ecobee-thermostat-card.js`, then register `/local/ecobee-thermostat-card.js?v=1.0.3` as a **JavaScript module** under **Settings → Dashboards → ⋮ → Resources**. Hard-refresh before adding the custom card.
 
 ## Example: Living room
 
@@ -44,7 +51,7 @@ type: custom:ecobee-thermostat-card
 entity: climate.living_room
 name: LIVING ROOM
 outside_entity: sensor.kpne_temperature
-presence_entity: person.dmitriy
+weather_entity: weather.REPLACE_WITH_YOUR_NWS_WEATHER_ENTITY
 # humidity_entity: sensor.living_room_humidity
 ```
 
@@ -56,9 +63,10 @@ entity: climate.garage_thermostat_2
 name: Garage
 outside_entity: sensor.kpne_temperature
 heating_only: true
+weather_entity: weather.REPLACE_WITH_YOUR_NWS_WEATHER_ENTITY
 ```
 
-**Note:** Above climate and weather entities are illustrative. Confirm exact IDs in Home Assistant under Developer Tools → States. Without `outside_entity`, the outdoor value displays `—`. Without `presence_entity`, the left status displays `status`. Indoor humidity defaults to the climate entity's `current_humidity` attribute; `humidity_entity` overrides it.
+**Note:** Above climate and weather entities are illustrative. Confirm exact IDs in Home Assistant under Developer Tools → States. Without `outside_entity`, the outdoor value displays `—`. Set `weather_entity` to the actual NWS weather entity ID from Developer Tools → States (often named for your forecast location). The entity must report conditions such as `sunny`, `cloudy`, `partlycloudy`, or `rainy`. When it is absent/unavailable, the card shows **Weather unavailable**; the outdoor temperature is independent. Indoor humidity defaults to the climate entity's `current_humidity` attribute; `humidity_entity` overrides it.
 
 ## Options
 
@@ -68,7 +76,7 @@ heating_only: true
 | `name` | No | Display heading, defaults to ECOBEE |
 | `outside_entity` | No | Temperature sensor whose units match HA temperature units |
 | `humidity_entity` | No | Humidity sensor override |
-| `presence_entity` | No | `person.*`, `device_tracker.*`, or binary sensor; shows home/away |
+| `weather_entity` | No | Home Assistant `weather.*` or weather condition sensor for icon and condition label |
 | `min_temp`, `max_temp` | No | Override climate entity minimum and maximum permitted target |
 | `step` | No | Override the thermostat's setpoint increment |
 | `heating_only` | No | Show and permit only `heat` and `off` buttons in this card (recommended for Garage) |
@@ -83,7 +91,7 @@ heating_only: true
 - In auto mode, separate heat and cool target values are adjusted while maintaining at least one step of separation.
 - The circular dial currently provides a fixed decorative arc, not an interactive temperature scale. Use the explicit plus/minus buttons to change setpoints.
 - The date/time use the device's browser clock. Outdoor data are read directly from the configured entity and are **not automatically converted** between Fahrenheit/Celsius.
-- Occupancy status is informational; tapping it opens controls, not an automation.
+- Outside weather condition is informational and read-only; it does not change thermostat controls.
 - Ecobee comfort profiles, holds, and schedules are not changed or managed by this card. Some integrations may interpret `climate.set_temperature` as a temporary hold; confirm actual device behavior before routine use.
 - Heating/cooling action display depends on the entity's `hvac_action` attribute. Without it, the configured HVAC mode is shown.
 
@@ -101,6 +109,13 @@ Remove the card from the dashboard and delete the resource registration. The scr
 
 MIT. See LICENSE.
 
+## Version 1.0.3 changes
+
+- Replace the unused Status/occupancy area with an outside weather icon and condition label driven by a configurable Home Assistant `weather.*` entity (or condition sensor).
+- Render native SVG icons for sunny, partly cloudy, cloudy, rain, snow, thunderstorms, fog and windy conditions. No third-party icons or network requests.
+- Show Weather unavailable when the configured weather entity is absent or unavailable; no fabricated condition.
+- Preserve the KPNE outdoor temperature sensor, the existing temperature controls, and heating-only Garage mode restrictions.
+
 ## Version 1.0.2 changes
 
 - Improved humidity, current-temperature, and operating-mode spacing within the dial.
@@ -114,3 +129,6 @@ After publishing a GitHub release, download the new version in HACS and refresh 
 ### Garage heating-only configuration reminder
 
 Add `heating_only: true` to the actual dashboard card YAML (not just the repository example). Without that option the card will show every HVAC mode advertised by the entity, including cooling options even if you never use them.
+
+### v1.0.3 layout refinement
+- Lowered the indoor humidity line slightly (23% to 26% of the dial height) for improved spacing beneath the upper arc.
