@@ -1,3 +1,9 @@
+## v1.0.6 changes
+
+- Active Heat mode button uses amber/orange; active Cool mode button uses blue.
+- Living Room Off panel now uses generic HVAC wording; Garage heating-only wording is preserved.
+- Mode selection and thermostat commands are unchanged.
+
 # Ecobee Thermostat Card (unofficial)
 
 A standalone Home Assistant Lovelace thermostat dashboard card inspired by the visual layout in a Lennox touchscreen reference image, with **ecobee** text branding. This project is not affiliated with, sponsored by, or endorsed by Ecobee.

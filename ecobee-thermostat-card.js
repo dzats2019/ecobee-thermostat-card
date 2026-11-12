@@ -1,4 +1,4 @@
-/* Ecobee-style Thermostat Card v1.0.5
+/* Ecobee-style Thermostat Card v1.0.6
  * Standalone Home Assistant Lovelace custom card. No third-party dependencies.
  * Ecobee is a trademark of its respective owner; this is an unofficial project.
  */
@@ -54,6 +54,9 @@
     .mode-buttons { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; padding-top:11px; }
     .chip { border:1px solid #406482; background:#122c46; border-radius:10px; padding:8px 12px; font-size:13px; text-transform:capitalize; }
     .chip.selected { background:#1268a8; border-color:#53c3ff; color:#fff; }
+    .chip.selected[data-value="heat"] { background:#d9811e; border-color:#ffc16d; color:#fff; }
+    .chip.selected[data-value="cool"] { background:#086fc1; border-color:#64d1ff; color:#fff; }
+    .chip.selected[data-value="off"] { background:#1268a8; border-color:#53c3ff; color:#fff; }
     .info { font-size:12px; text-align:center; opacity:.88; margin-top:10px; line-height:1.4; }
     .error { color:#ffd0d0; font-size:13px; padding:10px; text-align:center; }
     .unavailable { opacity:.55; } button:disabled { cursor:not-allowed; opacity:.35; }
@@ -187,7 +190,11 @@
       const date=time.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
       const availability=unavailable?'unavailable':'';
       const options=modes.map(mode=>`<button class="chip ${climate.state===mode?'selected':''}" data-action="mode" data-value="${esc(mode)}" ${unavailable||this._busy?'disabled':''}>${esc(MODE_LABELS[mode]||mode)}</button>`).join('');
-      const targetControls=off ? `<div class="panel-title">Heating is off</div><div class="info">Select Heat to enable setpoint adjustments.</div>` : this._isRange(climate) ? `
+      const canHeat=modes.includes('heat');
+      const canCool=modes.includes('cool');
+      const offTitle=canHeat && !canCool ? 'Heating is off' : 'HVAC system is off';
+      const offHelp=canHeat && canCool ? 'Select Heat or Cool to adjust the temperature.' : canHeat ? 'Select Heat to enable setpoint adjustments.' : canCool ? 'Select Cool to enable setpoint adjustments.' : 'Choose a supported HVAC mode to adjust the temperature.';
+      const targetControls=off ? `<div class="panel-title">${offTitle}</div><div class="info">${offHelp}</div>` : this._isRange(climate) ? `
         <div class="panel-title">Auto mode temperature range (${esc(this._tempUnit())})</div>
         <div class="controls"><button class="control-btn" data-action="lower-low" ${unavailable||this._busy?'disabled':''} aria-label="Decrease heat target">−</button><div class="target">Heat ${round(numeric(a.target_temp_low))}</div><button class="control-btn" data-action="raise-low" ${unavailable||this._busy?'disabled':''} aria-label="Increase heat target">+</button></div>
         <div class="controls" style="margin-top:8px"><button class="control-btn" data-action="lower-high" ${unavailable||this._busy?'disabled':''} aria-label="Decrease cool target">−</button><div class="target">Cool ${round(numeric(a.target_temp_high))}</div><button class="control-btn" data-action="raise-high" ${unavailable||this._busy?'disabled':''} aria-label="Increase cool target">+</button></div>` : `
