@@ -1,4 +1,4 @@
-## v1.0.6 changes
+## v1.0.7 changes
 
 - Active Heat mode button uses amber/orange; active Cool mode button uses blue.
 - Living Room Off panel now uses generic HVAC wording; Garage heating-only wording is preserved.
@@ -171,3 +171,14 @@ grid_options:
 ```
 
 Note: The permitted modes control only what this dashboard card offers. Existing Ecobee automations, schedules, and other HA controls are unaffected.
+
+
+## v1.0.7 - Ecobee Room Sensors
+
+Add `room_sensors` to any card to show a separate, collapsible **Sensors (N)** panel. Sensors are read-only. Set `temperature` to a Home Assistant `sensor.*` temperature entity, or to `climate.*` to display the thermostat's `current_temperature` attribute. Optional `occupancy`, `motion`, and `battery` entities are supported. Missing/unavailable readings display `—` or `Unavailable` rather than zero.
+
+The Garage example shows the Garage thermostat's own temperature measurement. If a separate Garage SmartSensor exists, replace or supplement it with its actual sensor entity ID.
+
+**Check entity IDs before using the Living Room example.** Only the Family Room SmartSensor IDs have been verified from screenshots. The other three sensor entity IDs in `living-room.yaml` are proposed names and may differ in your Home Assistant installation.
+
+The Sensors button does not change Ecobee occupancy handling, sensor participation or HVAC setpoints.

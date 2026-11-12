@@ -1,12 +1,30 @@
 type: custom:ecobee-thermostat-card
 entity: climate.living_room
-name: LIVING ROOM
+name: Living Room
 outside_entity: sensor.kpne_temperature
 weather_entity: weather.kpne
 allowed_hvac_modes:
   - "off"
   - "heat"
   - "cool"
+room_sensors:
+  - name: Family Room
+    temperature: sensor.family_room_ecobee_sensor_temperature
+    occupancy: binary_sensor.family_room_ecobee_sensor_occupancy
+    motion: binary_sensor.family_room_ecobee_sensor_motion
+    battery: sensor.family_room_ecobee_sensor_battery
+  - name: Kitchen
+    temperature: sensor.kitchen_ecobee_sensor_temperature
+    occupancy: binary_sensor.kitchen_ecobee_sensor_occupancy
+    battery: sensor.kitchen_ecobee_sensor_battery
+  - name: Living Room
+    temperature: sensor.living_room_ecobee_sensor_temperature
+    occupancy: binary_sensor.living_room_ecobee_sensor_occupancy
+    battery: sensor.living_room_ecobee_sensor_battery
+  - name: Ryan's Room
+    temperature: sensor.ryan_room_ecobee_sensor_temperature
+    occupancy: binary_sensor.ryan_room_ecobee_sensor_occupancy
+    battery: sensor.ryan_room_ecobee_sensor_battery
 grid_options:
   columns: full
   rows: auto

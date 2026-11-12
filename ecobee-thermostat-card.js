@@ -1,4 +1,4 @@
-/* Ecobee-style Thermostat Card v1.0.6
+/* Ecobee-style Thermostat Card v1.0.7
  * Standalone Home Assistant Lovelace custom card. No third-party dependencies.
  * Ecobee is a trademark of its respective owner; this is an unofficial project.
  */
@@ -57,6 +57,15 @@
     .chip.selected[data-value="heat"] { background:#d9811e; border-color:#ffc16d; color:#fff; }
     .chip.selected[data-value="cool"] { background:#086fc1; border-color:#64d1ff; color:#fff; }
     .chip.selected[data-value="off"] { background:#1268a8; border-color:#53c3ff; color:#fff; }
+    .action-buttons { display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap; }
+    .sensor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .sensor-tile { background:#153451; border:1px solid #305778; border-radius:11px; padding:12px; min-width:0; }
+    .sensor-name { color:#d5effd; font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+    .sensor-details { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 10px; margin-top:9px; }
+    .sensor-temp { color:#b8ecff; font-size:28px; font-variant-numeric:tabular-nums; }
+    .sensor-meta { font-size:12px; color:#a6c6da; line-height:1.5; }
+    .sensor-occupied { color:#7de0b5; } .sensor-unoccupied { color:#a2b5c9; }
+    @media(max-width:410px) { .sensor-grid { grid-template-columns:1fr; } }
     .info { font-size:12px; text-align:center; opacity:.88; margin-top:10px; line-height:1.4; }
     .error { color:#ffd0d0; font-size:13px; padding:10px; text-align:center; }
     .unavailable { opacity:.55; } button:disabled { cursor:not-allowed; opacity:.35; }
@@ -80,7 +89,7 @@
   const MODE_LABELS = {heat:'Heat',cool:'Cool',heat_cool:'Heat / Cool',off:'Off',dry:'Dry',fan_only:'Fan',auto:'Auto'};
   const MODE_STATUS = {heat:'heat only',cool:'cool only',heat_cool:'heat / cool',off:'system off',dry:'dry',fan_only:'fan only',auto:'auto'};
   class EcobeeThermostatCard extends HTMLElement {
-    constructor() { super(); this.attachShadow({mode:'open'}); this._open=false; this._busy=false; this._message=''; this._ticker=null; this._boundClick = this._onClick.bind(this); this.shadowRoot.addEventListener('click',this._boundClick); }
+    constructor() { super(); this.attachShadow({mode:'open'}); this._open=false; this._sensorsOpen=false; this._busy=false; this._message=''; this._ticker=null; this._boundClick = this._onClick.bind(this); this.shadowRoot.addEventListener('click',this._boundClick); }
     setConfig(config) {
       if (!config || typeof config.entity !== 'string' || !config.entity.startsWith('climate.')) throw new Error('Set entity to a climate entity (climate.xxx).');
       if (config.allowed_hvac_modes !== undefined &&
@@ -89,14 +98,17 @@
            config.allowed_hvac_modes.some(mode => typeof mode !== 'string'))) {
         throw new Error('allowed_hvac_modes must be a non-empty list of mode strings.');
       }
+      if (config.room_sensors !== undefined && (!Array.isArray(config.room_sensors) || config.room_sensors.some(s => !s || typeof s !== 'object' || typeof s.name !== 'string' || typeof s.temperature !== 'string' || !s.name.trim() || !s.temperature.trim() || ['occupancy','motion','battery'].some(k => s[k] != null && typeof s[k] !== 'string')))) {
+        throw new Error('room_sensors must be a list of objects with name and temperature entity IDs; occupancy, motion and battery are optional entity IDs.');
+      }
       this._config = {...config, name:config.name || 'ECOBEE', min_temp:config.min_temp, max_temp:config.max_temp, step:config.step};
       this._render();
     }
     set hass(hass) { this._hass=hass; this._render(); }
     connectedCallback() { if (!this._ticker) this._ticker=setInterval(()=>this._render(),30000); this._render(); }
     disconnectedCallback() { if(this._ticker) clearInterval(this._ticker); this._ticker=null; }
-    getCardSize() { return this._open ? 8 : 6; }
-    getGridOptions() { return {columns:12, min_columns:6, rows:this._open?8:6, min_rows:5}; }
+    getCardSize() { return 6 + (this._open ? 2 : 0) + (this._sensorsOpen ? 3 : 0); }
+    getGridOptions() { return {columns:12, min_columns:6, rows:6+(this._open?2:0)+(this._sensorsOpen?3:0), min_rows:5}; }
     static getStubConfig() { return {entity:'climate.living_room',name:'LIVING ROOM'}; }
     _get(id) { return id ? this._hass?.states?.[id] : null; }
     _tempUnit() { return this._hass?.config?.unit_system?.temperature || '°F'; }
@@ -160,6 +172,34 @@
       const permitted = this._config.heating_only ? ['heat', 'off'] : this._config.allowed_hvac_modes;
       return permitted ? exposed.filter(mode => permitted.includes(mode)) : exposed;
     }
+    _sensorTemp(id) {
+      const state=this._get(id);
+      if(!state || ['unknown','unavailable'].includes(state.state)) return null;
+      return numeric(id.startsWith('climate.') ? state.attributes?.current_temperature : state.state);
+    }
+    _sensorBinary(id) {
+      if(!id) return null;
+      const state=this._get(id);
+      if(!state || ['unknown','unavailable'].includes(state.state)) return null;
+      if(state.state==='on') return true;
+      if(state.state==='off') return false;
+      return null;
+    }
+    _sensorsPanel() {
+      const sensors=this._config.room_sensors || [];
+      if(!sensors.length || !this._sensorsOpen) return '';
+      const tiles=sensors.map(s => {
+        const temp=this._sensorTemp(s.temperature);
+        const occupancy=this._sensorBinary(s.occupancy);
+        const motion=this._sensorBinary(s.motion);
+        const battState=this._get(s.battery);
+        const battery=battState && !['unknown','unavailable'].includes(battState.state) ? numeric(battState.state) : null;
+        const status=occupancy===null ? 'Occupancy unavailable' : occupancy ? 'Occupied' : 'Unoccupied';
+        const occupiedClass=occupancy===true ? 'sensor-occupied' : 'sensor-unoccupied';
+        return `<div class="sensor-tile"><div class="sensor-name">${esc(s.name)}</div><div class="sensor-details"><span class="sensor-temp">${round(temp)}°</span><div class="sensor-meta"><div class="${occupiedClass}">${s.occupancy ? esc(status) : 'Occupancy not configured'}</div>${s.motion ? `<div>Motion: ${motion===null?'Unavailable':motion?'Detected':'Clear'}</div>` : ''}${s.battery ? `<div>Battery: ${battery===null?'Unavailable':`${round(battery)}%`}</div>`:''}</div></div></div>`;
+      }).join('');
+      return `<section class="panel" aria-label="Ecobee room sensors"><div class="panel-title">Room Sensors</div><div class="sensor-grid">${tiles}</div></section>`;
+    }
     _isRange(climate) { return climate.state==='heat_cool' && numeric(climate.attributes.target_temp_low)!==null && numeric(climate.attributes.target_temp_high)!==null; }
     _targetInfo(climate) {
       const a=climate.attributes;
@@ -209,9 +249,10 @@
           ${off?'':`<path d="M 54 244 A 125 125 0 1 1 246 244" fill="none" stroke="url(#arc)" stroke-width="24" stroke-linecap="round"/>
           <circle cx="219" cy="40" r="23" fill="${modeColor}" stroke="${ringColor}" stroke-width="5"/><circle cx="219" cy="40" r="11" fill="${ringColor}"/>`}
         </svg><div class="dial-content"><div class="humidity">${humidity===null?'Indoor humidity unavailable':`Humidity <span class="droplet">♦</span> ${round(humidity)}%`}</div><div class="current">${round(current)}<span class="degree">°</span></div><div class="mode">${esc(label)}</div></div></div>
-        <div class="action-row"><button class="schedule" data-action="toggle" aria-expanded="${this._open}">modes / controls</button></div></div>
+        <div class="action-row"><div class="action-buttons"><button class="schedule" data-action="toggle" aria-expanded="${this._open}">modes / controls</button>${(this._config.room_sensors||[]).length ? `<button class="schedule" data-action="sensors" aria-expanded="${this._sensorsOpen}">sensors (${this._config.room_sensors.length})</button>` : ''}</div></div></div>
         <div class="side right">${off?'':`<div class="small">${this._config.heating_only?'heat-to':climate.state==='heat'?'heat-to':climate.state==='heat_cool'?'range':'cool-to'}</div><div class="big">${esc(target.label)}°</div>`}<div class="small">outside</div><div class="big outside-value">${round(outside)}°</div></div></div>
         ${this._open?`<div class="panel">${targetControls}<div class="mode-buttons">${options}</div><div class="info">Changes are sent to Home Assistant. Ecobee schedules or holds may override or modify them.</div>${this._message?`<div class="error" role="alert">${esc(this._message)}</div>`:''}</div>`:''}
+        ${this._sensorsPanel()}
         <div class="brand">ecobee</div></div></ha-card>`;
     }
     async _onClick(event) {
@@ -219,6 +260,7 @@
       if(!btn || !this._hass || !this._config || this._busy) return;
       const act=btn.dataset.action;
       if(act==='toggle'){this._open=!this._open;this._message='';this._render();return;}
+      if(act==='sensors'){this._sensorsOpen=!this._sensorsOpen;this._render();return;}
       const climate=this._get(this._config.entity);
       if(!climate || ['unknown','unavailable'].includes(climate.state)) return;
       const {min,max,step}=this._levels(climate);
